@@ -1,0 +1,11 @@
+{
+  "name": "scortonjs",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  }
+}
