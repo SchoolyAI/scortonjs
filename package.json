@@ -1,0 +1,17 @@
+{
+  "name": "scortonjs",
+  "version": "0.1.0",
+  "description": "Example CLI",
+  "bin": {
+    "scorton": "bin/run"
+  },
+  "oclif": {
+    "commands": "./src/commands",
+    "bin": "scorton",
+    "plugins": ["@oclif/plugin-help"]
+  },
+  "dependencies": {
+    "@oclif/core": "^3.11.1",
+    "@oclif/plugin-help": "^5.2.19"
+  }
+}
