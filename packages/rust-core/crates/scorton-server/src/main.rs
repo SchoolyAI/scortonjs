@@ -1,5 +1,6 @@
 use actix_web::{web, App, HttpServer, HttpResponse, Result, middleware::Logger};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 use anyhow::anyhow;
 
@@ -139,17 +140,24 @@ async fn scan_handler(req: web::Json<ScanRequest>) -> Result<HttpResponse> {
 }
 
 async fn compliance_handler(req: web::Json<ComplianceRequest>) -> Result<HttpResponse> {
-    let framework = match req.framework.as_str() {
-        "dora" => scorton_compliance::ComplianceFramework::DORA,
-        "nis2" => scorton_compliance::ComplianceFramework::NIS2,
-        "both" => scorton_compliance::ComplianceFramework::Both,
+    let (dora_enabled, nis2_enabled) = match req.framework.as_str() {
+        "dora" => (true, false),
+        "nis2" => (false, true),
+        "both" => (true, true),
         _ => {
             let response = ApiResponse::<()>::error(format!("Unknown framework: {}", req.framework));
             return Ok(HttpResponse::BadRequest().json(response));
         }
     };
 
-    match scorton_compliance::run_compliance_assessment(&req.framework, &req.target).await {
+    let config = scorton_compliance::ComplianceConfig {
+        dora_enabled,
+        nis2_enabled,
+        ..Default::default()
+    };
+    let engine = scorton_compliance::ComplianceEngine::new(config);
+
+    match engine.run_compliance_assessment(&req.target).await {
         Ok(result) => {
             let response = ApiResponse::success(json!({
                 "framework": req.framework,

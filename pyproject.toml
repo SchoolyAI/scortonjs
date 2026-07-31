@@ -145,3 +145,7 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+
+[tool.setuptools]
+py-modules = ["scorton"]

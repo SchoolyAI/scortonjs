@@ -17,7 +17,7 @@
   "dependencies": {
     "commander": "^12.1.0",
     "zod": "^3.23.8",
-    "@scorton/rust-core": "workspace:*"
+    "@scorton/rust-core": "*"
   },
   "optionalDependencies": {
     "@scorton/rust-core-darwin-arm64": "*",
