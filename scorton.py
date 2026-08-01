@@ -146,9 +146,13 @@ class ScortonClient:
             raise APIError(f"Request timeout after {self.timeout}s for {url}")
         except requests.exceptions.ConnectionError as e:
             raise APIError(f"Connection error for {url}: {e}")
+
         except requests.exceptions.HTTPError as e:
-            body_preview = response.text[:400] if 'response' in locals() else "No response body"
-            raise APIError(f"HTTP error {response.status_code} for {url}: {body_preview}")
+            resp = getattr(e, "response", None)
+            status = resp.status_code if resp is not None else "unknown"
+            body_preview = resp.text[:400] if resp is not None else "No response body"
+            raise APIError(f"HTTP error{status} for{url}:{body_preview}")
+
         except requests.exceptions.RequestException as e:
             raise APIError(f"Request failed for {url}: {e}")
         
@@ -170,7 +174,7 @@ def validate_url(url: str) -> bool:
     """Validate if the provided string is a valid URL."""
     try:
         result = urlparse(url)
-        return all([result.scheme, result.netloc])
+        return result.scheme in ("http", "https") and bool(result.netloc)
     except Exception:
         return False
 

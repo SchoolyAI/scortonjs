@@ -20,22 +20,29 @@ if (!fs.existsSync(pythonScript)) {
 
 // Function to find Python executable
 function findPython() {
-  const pythonCommands = ['python3', 'python'];
-  
-  for (const cmd of pythonCommands) {
+  const pythonCommands = ['python', 'python3'];
+  const windowsCandidates = [
+    process.env.SCORTON_PY_PATH,
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python312', 'python.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python311', 'python.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python310', 'python.exe')
+  ].filter(Boolean);
+
+  for (const candidate of [...windowsCandidates, ...pythonCommands]) {
+    if (!candidate) continue;
     try {
-      const result = require('child_process').execSync(`${cmd} --version`, { 
+      const result = require('child_process').execSync(`"${candidate}" --version`, {
         encoding: 'utf8',
         stdio: 'pipe'
       });
       if (result.includes('Python')) {
-        return cmd;
+        return candidate;
       }
     } catch (e) {
       // Continue to next command
     }
   }
-  
+
   return null;
 }
 

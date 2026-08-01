@@ -1,3 +1,4 @@
+import process from 'node:process';
 import { Command } from 'commander';
 import { runScan } from './commands/scan.js';
 import { runScore } from './commands/score.js';
@@ -15,7 +16,8 @@ const program = new Command();
 program
   .name('scorton')
   .description('Scorton JS-first CLI with Python providers')
-  .version('0.1.0');
+  .version('0.1.0')
+  .showHelpAfterError();
 
 program.command('scan')
   .argument('<tool>')
@@ -77,5 +79,15 @@ program.command('module')
     return moduleList();
   });
 
-program.parseAsync(process.argv);
+const args = process.argv.slice(2);
+
+if (args.length === 0) {
+  program.help();
+  process.exit(0);
+}
+
+program.parseAsync(args).catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exitCode = 1;
+});
 
