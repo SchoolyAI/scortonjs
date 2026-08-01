@@ -7,8 +7,8 @@
     "scorton": "./bin/scorton"
   },
   "scripts": {
-    "test": "python3 -m py_compile scorton.py main.py",
-    "install-deps": "pip3 install -r requirements.txt --user || echo 'Python dependencies installation failed. Please install manually: pip3 install -r requirements.txt'",
+    "test": "python -m py_compile scorton.py main.py",
+    "install-deps": "python -m pip install -r requirements.txt --user || echo 'Python dependencies installation failed. Please install manually: python -m pip install -r requirements.txt'",
     "postinstall": "npm run install-deps",
     "build:rust": "cd packages/rust-core && cargo build --release",
     "build:napi": "cd packages/rust-core/crates/scorton-napi && npm run build",

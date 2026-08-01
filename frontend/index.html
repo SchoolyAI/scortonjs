@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scorton TrustGraph - Knowledge Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        color: #f1f5f9;
+      }
+      .container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100vh;
+        gap: 20px;
+        padding: 20px;
+      }
+      .graph-section {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .graph-header {
+        padding: 16px;
+        border-bottom: 1px solid #334155;
+        background: rgba(30, 41, 59, 0.5);
+      }
+      .graph-header h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .graph-header p {
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      #graph {
+        flex: 1;
+        position: relative;
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+      }
+      .node {
+        cursor: pointer;
+        stroke: #38bdf8;
+        stroke-width: 2px;
+        transition: all 0.2s ease;
+      }
+      .node:hover {
+        stroke-width: 3px;
+        filter: drop-shadow(0 0 8px #38bdf8);
+      }
+      .node-label {
+        pointer-events: none;
+        font-size: 12px;
+        font-weight: 500;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .link {
+        stroke: #64748b;
+        stroke-width: 2px;
+        fill: none;
+        marker-end: url(#arrowhead);
+      }
+      .link.highlight {
+        stroke: #38bdf8;
+        stroke-width: 3px;
+      }
+      .link-label {
+        font-size: 11px;
+        fill: #94a3b8;
+        pointer-events: none;
+        background: rgba(15, 23, 42, 0.9);
+      }
+      .details-section {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      .details-header {
+        padding: 16px;
+        border-bottom: 1px solid #334155;
+        background: rgba(30, 41, 59, 0.5);
+        position: sticky;
+        top: 0;
+      }
+      .details-header h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .details-content {
+        padding: 16px;
+        flex: 1;
+        overflow-y: auto;
+      }
+      .card {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .card h4 {
+        margin: 0 0 8px 0;
+        color: #38bdf8;
+        font-size: 14px;
+      }
+      .card p {
+        margin: 0 0 6px 0;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #cbd5e1;
+      }
+      .card .muted {
+        color: #64748b;
+        font-size: 11px;
+      }
+      .pill {
+        display: inline-block;
+        background: rgba(56, 189, 248, 0.2);
+        border: 1px solid #38bdf8;
+        color: #38bdf8;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        margin: 4px 4px 0 0;
+      }
+      .relationship-item {
+        background: rgba(15, 23, 42, 0.8);
+        border-left: 3px solid #818cf8;
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+      }
+      .relationship-item strong {
+        color: #818cf8;
+        font-size: 12px;
+      }
+      .entity-icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        margin-right: 6px;
+        font-size: 14px;
+      }
+      .score-badge {
+        background: linear-gradient(135deg, #f97316, #d946ef);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="graph-section">
+        <div class="graph-header">
+          <h2>🔗 TrustGraph - Knowledge Graph</h2>
+          <p>Click on any node to explore relationships • Drag nodes to rearrange</p>
+          <div id="legend" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+            <div><span style="color: #ec4899;">●</span> 👤 Person</div>
+            <div><span style="color: #8b5cf6;">●</span> 🤖 Agent</div>
+            <div><span style="color: #06b6d4;">●</span> 🏢 Organization</div>
+            <div><span style="color: #f59e0b;">●</span> 📄 Documents/Policy</div>
+            <div><span style="color: #10b981;">●</span> ✓ Practice</div>
+            <div><span style="color: #6366f1;">●</span> ⚙️ System/Tool</div>
+            <div><span style="color: #ef4444;">●</span> ⚠️ Risk</div>
+            <div><span style="color: #fbbf24;">●</span> ⭐ TrustScore</div>
+          </div>
+        </div>
+        <div id="graph"></div>
+      </div>
+      <div class="details-section">
+        <div class="details-header">
+          <h3 id="selectedEntity">Select an entity</h3>
+        </div>
+        <div class="details-content" id="details"></div>
+      </div>
+    </div>
+    
+    <div style="position: fixed; bottom: 20px; left: 20px; background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 12px; max-width: 350px; font-size: 12px; color: #cbd5e1; line-height: 1.6; z-index: 100;">
+      <strong style="color: #38bdf8;">📚 How TrustScore Works:</strong>
+      <div style="margin-top: 6px; color: #94a3b8;">
+        1️⃣ <strong>User</strong> owns an <strong>AI Agent</strong><br>
+        2️⃣ Agent uses <strong>MCP</strong> and reads <strong>Documents</strong><br>
+        3️⃣ Documents define <strong>Practices</strong> & <strong>Policies</strong><br>
+        4️⃣ Practices influence <strong>Risk</strong> assessment<br>
+        5️⃣ Risk determines the <strong>TrustScore</strong> (0-10)
+      </div>
+    </div>
+
+    <script>
+      const graphData = {
+        nodes: [
+          { id: 'user-1', label: 'User', type: 'person', icon: '👤' },
+          { id: 'agent-1', label: 'AI Agent', type: 'agent', icon: '🤖' },
+          { id: 'org-1', label: 'Organization', type: 'organization', icon: '🏢' },
+          { id: 'doc-1', label: 'Document', type: 'document', icon: '📄' },
+          { id: 'policy-1', label: 'Policy', type: 'policy', icon: '📋' },
+          { id: 'practice-1', label: 'Practice', type: 'practice', icon: '✓' },
+          { id: 'mcp-1', label: 'MCP', type: 'system', icon: '⚙️' },
+          { id: 'tool-1', label: 'Tool', type: 'tool', icon: '🛠️' },
+          { id: 'risk-1', label: 'Risk', type: 'risk', icon: '⚠️' },
+          { id: 'trust-1', label: 'TrustScore', type: 'trustscore', icon: '⭐' },
+          { id: 'history-1', label: 'History', type: 'metadata', icon: '📊' },
+          { id: 'evidence-1', label: 'Evidence', type: 'metadata', icon: '📎' }
+        ],
+        links: [
+          { source: 'user-1', target: 'agent-1', label: 'owns' },
+          { source: 'agent-1', target: 'mcp-1', label: 'uses' },
+          { source: 'mcp-1', target: 'tool-1', label: 'executes' },
+          { source: 'agent-1', target: 'doc-1', label: 'reads' },
+          { source: 'agent-1', target: 'policy-1', label: 'follows' },
+          { source: 'org-1', target: 'policy-1', label: 'defines' },
+          { source: 'doc-1', target: 'practice-1', label: 'based on' },
+          { source: 'practice-1', target: 'risk-1', label: 'influences' },
+          { source: 'risk-1', target: 'trust-1', label: 'supports' },
+          { source: 'trust-1', target: 'history-1', label: 'traceable' },
+          { source: 'trust-1', target: 'evidence-1', label: 'produces' },
+          { source: 'risk-1', target: 'trust-1', label: 'computes' }
+        ]
+      };
+
+      const colorMap = {
+        person: '#ec4899',
+        agent: '#8b5cf6',
+        organization: '#06b6d4',
+        document: '#f59e0b',
+        policy: '#f59e0b',
+        practice: '#10b981',
+        system: '#6366f1',
+        tool: '#6366f1',
+        risk: '#ef4444',
+        trustscore: '#fbbf24',
+        metadata: '#64748b'
+      };
+
+      const width = document.getElementById('graph').clientWidth;
+      const height = document.getElementById('graph').clientHeight;
+
+      const svg = d3.select('#graph')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+      // Add tooltip
+      const tooltip = d3.select('body').append('div')
+        .style('position', 'absolute')
+        .style('background', 'rgba(30, 41, 59, 0.95)')
+        .style('color', '#e0f2fe')
+        .style('padding', '8px 12px')
+        .style('border-radius', '6px')
+        .style('font-size', '12px')
+        .style('border', '1px solid #38bdf8')
+        .style('pointer-events', 'none')
+        .style('z-index', '1000')
+        .style('display', 'none')
+        .style('max-width', '200px')
+        .style('box-shadow', '0 4px 12px rgba(0,0,0,0.3)');
+
+      svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('markerWidth', 10)
+        .attr('markerHeight', 10)
+        .attr('refX', 28)
+        .attr('refY', 3)
+        .attr('orient', 'auto')
+        .append('polygon')
+        .attr('points', '0 0, 10 3, 0 6')
+        .attr('fill', '#64748b');
+
+      // Define layers for better organization
+      const layerAssignments = {
+        'user-1': 0,
+        'agent-1': 1,
+        'mcp-1': 1,
+        'doc-1': 1,
+        'policy-1': 1,
+        'org-1': 1,
+        'practice-1': 2,
+        'tool-1': 2,
+        'risk-1': 3,
+        'trust-1': 4,
+        'history-1': 4,
+        'evidence-1': 4
+      };
+
+      const simulation = d3.forceSimulation(graphData.nodes)
+        .force('link', d3.forceLink(graphData.links).id(d => d.id).distance(120))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('y', d3.forceY().strength(0.1).y(d => {
+          const layer = layerAssignments[d.id] || 0;
+          return (layer / 4) * (height - 100) + 50;
+        }));
+
+      const link = svg.selectAll('.link')
+        .data(graphData.links)
+        .enter()
+        .append('line')
+        .attr('class', 'link')
+        .on('mouseenter', function(event, d) {
+          d3.select(this).classed('highlight', true);
+          tooltip.style('display', 'block')
+            .html(`<strong>${d.source.label}</strong> <span style="color: #38bdf8;">${d.label}</span> <strong>${d.target.label}</strong>`);
+        })
+        .on('mousemove', function(event) {
+          tooltip.style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY + 10) + 'px');
+        })
+        .on('mouseleave', function() {
+          d3.select(this).classed('highlight', false);
+          tooltip.style('display', 'none');
+        });
+
+      const linkLabel = svg.selectAll('.link-label')
+        .data(graphData.links)
+        .enter()
+        .append('text')
+        .attr('class', 'link-label')
+        .text(d => d.label);
+
+      const nodeGroup = svg.selectAll('.node-group')
+        .data(graphData.nodes)
+        .enter()
+        .append('g')
+        .attr('class', 'node-group')
+        .call(d3.drag()
+          .on('start', dragStarted)
+          .on('drag', dragged)
+          .on('end', dragEnded))
+        .on('click', (event, d) => {
+          event.stopPropagation();
+          showDetails(d);
+        });
+
+      nodeGroup.append('circle')
+        .attr('class', 'node')
+        .attr('r', 35)
+        .attr('fill', d => colorMap[d.type] || '#38bdf8')
+        .style('cursor', 'pointer');
+
+      nodeGroup.append('text')
+        .attr('class', 'node-label')
+        .text(d => d.icon)
+        .attr('font-size', '20px')
+        .attr('dy', '0.35em');
+
+      // Add text label below node
+      nodeGroup.append('text')
+        .attr('class', 'node-label')
+        .text(d => d.label)
+        .attr('font-size', '11px')
+        .attr('dy', '35px')
+        .attr('text-anchor', 'middle')
+        .style('fill', '#cbd5e1')
+        .style('font-weight', '500');
+
+      simulation.on('tick', () => {
+        link
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+
+        linkLabel
+          .attr('x', d => (d.source.x + d.target.x) / 2)
+          .attr('y', d => (d.source.y + d.target.y) / 2);
+
+        nodeGroup
+          .attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+
+      function dragStarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+
+      function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+      }
+
+      function dragEnded(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }
+
+      function showDetails(node) {
+        document.getElementById('selectedEntity').textContent = `${node.icon} ${node.label}`;
+
+        const details = document.getElementById('details');
+        details.innerHTML = '';
+
+        const infoCard = document.createElement('div');
+        infoCard.className = 'card';
+        infoCard.innerHTML = `
+          <h4>Entity Information</h4>
+          <p><strong>Type:</strong> ${node.type}</p>
+          <p class="muted">ID: ${node.id}</p>
+        `;
+        details.appendChild(infoCard);
+
+        const relatedLinks = graphData.links.filter(l => l.source.id === node.id || l.target.id === node.id);
+        if (relatedLinks.length > 0) {
+          const relCard = document.createElement('div');
+          relCard.className = 'card';
+          relCard.innerHTML = '<h4>Relationships</h4>';
+          relatedLinks.forEach(link => {
+            const item = document.createElement('div');
+            item.className = 'relationship-item';
+            const isSource = link.source.id === node.id;
+            const otherNode = isSource ? link.target : link.source;
+            item.innerHTML = `
+              <strong>${link.label}</strong>
+              <p>${otherNode.icon} ${otherNode.label}</p>
+              <p class="muted">${isSource ? '→ ' : '← '}${link.label}</p>
+            `;
+            relCard.appendChild(item);
+          });
+          details.appendChild(relCard);
+        }
+
+        if (node.type === 'trustscore') {
+          const scoreCard = document.createElement('div');
+          scoreCard.className = 'card';
+          scoreCard.innerHTML = `
+            <h4>TrustScore Computation</h4>
+            <p>This entity aggregates risk assessment, policy compliance, and practice adherence.</p>
+            <div class="score-badge">Current Score: 7.8/10</div>
+            <p class="muted" style="margin-top: 12px;">Influenced by:</p>
+            <ul style="margin: 4px 0; padding-left: 16px; color: #cbd5e1; font-size: 12px;">
+              <li>Risk Assessment (40%)</li>
+              <li>Policy Compliance (35%)</li>
+              <li>Practice Adherence (25%)</li>
+            </ul>
+          `;
+          details.appendChild(scoreCard);
+        }
+      }
+
+      showDetails(graphData.nodes[9]); // Default to TrustScore
+    </script>
+  </body>
+</html>
